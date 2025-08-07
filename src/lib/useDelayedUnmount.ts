@@ -1,3 +1,5 @@
+// src/lib/useDelayedUnmount.ts
+
 import { useEffect, useState } from "react";
 
 export function useDelayedUnmount(isMounted: boolean, delay: number = 300) {

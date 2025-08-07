@@ -1,11 +1,11 @@
-'use client';
+"use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Hamburger from "@/components/Hamburger";
 import { useDelayedUnmount } from "@/lib/useDelayedUnmount";
+import { motion, AnimatePresence } from "framer-motion";
 
-// --- Tipe props dibuat optional ---
 type NavbarProps = {
   search?: string;
   setSearch?: (v: string) => void;
@@ -16,8 +16,20 @@ export default function Navbar({ search, setSearch }: NavbarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const shouldShowDrawer = useDelayedUnmount(menuOpen, 300);
 
+  // Lock scroll body saat menu drawer terbuka
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   return (
-    <header className="bg-white shadow-sm w-full sticky top-0 z-40">
+    <header className="bg-white/80 backdrop-blur sticky top-0 z-50 shadow-sm transition-all">
       <nav className="max-w-6xl mx-auto flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3">
         {/* Logo + Nama */}
         <div className="flex items-center gap-2">
@@ -34,7 +46,6 @@ export default function Navbar({ search, setSearch }: NavbarProps) {
 
         {/* Desktop: Menu + Search */}
         <div className="hidden md:flex items-center gap-4">
-          {/* Hanya tampil jika ada search & setSearch */}
           {typeof search === "string" && setSearch && (
             <input
               type="text"
@@ -69,56 +80,82 @@ export default function Navbar({ search, setSearch }: NavbarProps) {
         <div className="flex md:hidden gap-2 items-center">
           {typeof search === "string" && setSearch && (
             <button
-              aria-label="search"
-              className="p-2 rounded-full hover:bg-[#FFF2D9] transition"
-              onClick={() => setSearchOpen(true)}
-            >
-              <svg width="24" height="24" fill="none" stroke="#F7931A" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            </button>
+  aria-label="search"
+  className="p-2 rounded-full hover:bg-[#FFF2D9] transition"
+  onClick={() => {
+    if (searchOpen) setSearch(""); // Clear jika close
+    setSearchOpen((s) => !s);
+  }}
+>
+  <svg width="24" height="24" fill="none" stroke="#F7931A" strokeWidth="2" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="7"/>
+    <path d="M21 21l-4.35-4.35"/>
+  </svg>
+</button>
           )}
           <Hamburger open={menuOpen} onClick={() => setMenuOpen((o) => !o)} />
         </div>
       </nav>
 
-      {/* Mobile Search Bar */}
-      {searchOpen && typeof search === "string" && setSearch && (
-        <div className="md:hidden px-4 py-3 bg-white shadow flex items-center gap-2">
-          <button
-            className="text-[#F7931A] p-1"
-            onClick={() => {
-              setSearch(""); // hapus teks pencarian
-              setSearchOpen(false); // tutup search bar
-            }}
-            aria-label="Tutup & hapus pencarian"
+      {/* Mobile Search Bar dengan animasi slide-down */}
+      <AnimatePresence>
+        {searchOpen && typeof search === "string" && setSearch && (
+          <motion.div
+            key="search-bar"
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -40, opacity: 0 }}
+            transition={{ duration: 0.32, ease: "easeInOut" }}
+            className="md:hidden px-4 py-3 bg-white shadow flex items-center gap-2 fixed top-[56px] left-0 right-0 z-[51]"
+            style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
           >
-            <svg width="24" height="24" fill="none" stroke="#F7931A" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-          <input
-            autoFocus
-            type="text"
-            placeholder="Cari produk"
-            className="border border-[#F7931A]/30 rounded-lg px-4 py-2 w-full text-[#383838] placeholder-gray-400 focus:outline-none focus:border-[#F7931A] transition"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-      )}
+            <button
+              className="text-[#F7931A] p-1"
+              onClick={() => {
+                setSearch(""); // hapus teks pencarian
+                setSearchOpen(false); // tutup search bar
+              }}
+              aria-label="Tutup & hapus pencarian"
+            >
+              <svg width="24" height="24" fill="none" stroke="#F7931A" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Cari produk"
+              className="border border-[#F7931A]/30 rounded-lg px-4 py-2 w-full text-[#383838] placeholder-gray-400 focus:outline-none focus:border-[#F7931A] transition"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Mobile Menu Drawer (animated) */}
+      {/* Mobile Menu Drawer (animated, half page, under navbar, no menu/X) */}
       {shouldShowDrawer && (
         <>
+          {/* Overlay: sama seperti navbar, transparan putih + blur */}
           <div
             className={`
-              fixed top-0 right-0 w-5/6 max-w-xs h-full bg-white shadow-lg z-50
-              transform transition-transform duration-300
-              ${menuOpen ? 'translate-x-0' : 'translate-x-full'}
+              fixed inset-0 z-40 transition-opacity duration-300
+              ${menuOpen ? "opacity-100" : "opacity-0"}
+              bg-white/50 backdrop-blur
             `}
+            onClick={() => setMenuOpen(false)}
+            style={{ top: '56px', height: 'calc(100vh - 56px)' }}
+          />
+          {/* Drawer menu */}
+          <div
+            className={`
+              fixed right-0 top-[56px] h-[calc(100vh-56px)] w-1/2 bg-white z-50
+              shadow-2xl
+              transform transition-transform duration-300
+              ${menuOpen ? "translate-x-0" : "translate-x-full"}
+              flex flex-col
+            `}
+            style={{ minWidth: 240, maxWidth: 400 }}
           >
-            <div className="flex items-center justify-between py-4 px-4 border-b">
-              <span className="font-bold text-[#F7931A] text-lg">Menu</span>
-              <Hamburger open={true} onClick={() => setMenuOpen(false)} />
-            </div>
-            <div className="flex flex-col py-5 px-6 gap-3 font-medium text-gray-700">
+            <nav className="flex flex-col py-8 px-7 gap-5 font-medium text-gray-700 text-lg">
               <Link href="/" className="hover:text-[#F7931A]" onClick={()=>setMenuOpen(false)}>Produk</Link>
               <Link href="/carapesan" className="hover:text-[#F7931A]" onClick={()=>setMenuOpen(false)}>Cara Pesan</Link>
               <Link href="/testimoni" className="hover:text-[#F7931A]" onClick={()=>setMenuOpen(false)}>Testimoni</Link>
@@ -129,13 +166,8 @@ export default function Navbar({ search, setSearch }: NavbarProps) {
                 className="hover:text-[#F7931A]"
                 onClick={()=>setMenuOpen(false)}
               >Laporkan Kendala</a>
-            </div>
+            </nav>
           </div>
-          {/* Overlay */}
-          <div
-            className={`fixed inset-0 bg-black/10 z-40 transition-opacity duration-300 ${menuOpen ? "opacity-100" : "opacity-0"}`}
-            onClick={()=>setMenuOpen(false)}
-          />
         </>
       )}
     </header>

@@ -1,3 +1,5 @@
+// src/app/api/payments/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
 type PaymentBody = {
